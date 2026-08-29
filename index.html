@@ -1,0 +1,944 @@
+<!DOCTYPE html>
+<html lang="pt-BR" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Webinário — A Arte de Escutar | Maestro Thiago Santos</title>
+<meta name="description" content="Dashboard de performance da ação de webinário do Maestro Thiago Santos — campanha AAEMCWEB.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<style>
+/* ---------------------------------------------------------------
+   Design system B16 + paleta dataviz (validada nos dois modos).
+   Slots categóricos 1-3 e rampa sequencial azul (ordinal, degraus
+   250-650 no claro / 100-550 no escuro).
+   --------------------------------------------------------------- */
+:root{
+  color-scheme: light;
+  --plane:#F4F4F2; --surface:#FFFFFF; --surface-2:#FAFAF8;
+  --ink:#111111; --ink-2:#52514e; --muted:#898781;
+  --grid:#e6e5df; --baseline:#c3c2b7; --ring:rgba(17,17,17,.10);
+  --accent:#D4A800;
+  --s1:#2a78d6; --s2:#eb6834; --s3:#1baf7a;
+  --good:#0ca30c; --good-text:#006300; --warn:#fab219; --serious:#ec835a; --critical:#d03b3b;
+  --shadow:0 1px 2px rgba(17,17,17,.04), 0 2px 8px rgba(17,17,17,.05);
+}
+:root[data-theme="dark"]{
+  color-scheme: dark;
+  --plane:#0d0d0d; --surface:#1a1a19; --surface-2:#211f1e;
+  --ink:#ffffff; --ink-2:#c3c2b7; --muted:#8f8e88;
+  --grid:#2c2c2a; --baseline:#383835; --ring:rgba(255,255,255,.10);
+  --accent:#e8bf1f;
+  --s1:#3987e5; --s2:#d95926; --s3:#199e70;
+  --good:#0ca30c; --good-text:#0ca30c; --warn:#fab219; --serious:#ec835a; --critical:#e05555;
+  --shadow:0 1px 2px rgba(0,0,0,.3), 0 2px 10px rgba(0,0,0,.35);
+}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0}
+body{
+  background:var(--plane); color:var(--ink);
+  font-family:"DM Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+  font-size:15px; line-height:1.5;
+  -webkit-font-smoothing:antialiased;
+}
+.wrap{max-width:1220px; margin:0 auto; padding:20px 18px 64px}
+
+/* ---------- header ---------- */
+header.top{
+  display:flex; flex-wrap:wrap; gap:14px; align-items:flex-end; justify-content:space-between;
+  padding:18px 0 16px; border-bottom:1px solid var(--grid); margin-bottom:22px;
+}
+.brand .kicker{
+  font-size:11px; letter-spacing:.14em; text-transform:uppercase;
+  color:var(--muted); font-weight:500; margin-bottom:4px;
+}
+.brand h1{
+  font-family:"Bebas Neue", "DM Sans", sans-serif; font-weight:400;
+  font-size:clamp(30px,4.6vw,44px); line-height:1; letter-spacing:.012em; margin:0;
+}
+.brand .sub{color:var(--ink-2); font-size:13.5px; margin-top:6px}
+.brand .sub b{color:var(--ink); font-weight:500}
+.tools{display:flex; flex-wrap:wrap; gap:8px; align-items:center}
+.btn{
+  font:inherit; font-size:13px; color:var(--ink-2); background:var(--surface);
+  border:1px solid var(--ring); border-radius:8px; padding:7px 12px; cursor:pointer;
+  display:inline-flex; align-items:center; gap:6px; transition:background .12s, color .12s;
+}
+.btn:hover{background:var(--surface-2); color:var(--ink)}
+.btn[aria-pressed="true"]{background:var(--ink); color:var(--surface); border-color:var(--ink)}
+.seg{display:inline-flex; background:var(--surface); border:1px solid var(--ring); border-radius:8px; overflow:hidden}
+.seg button{
+  font:inherit; font-size:13px; border:0; background:transparent; color:var(--ink-2);
+  padding:7px 12px; cursor:pointer;
+}
+.seg button[aria-pressed="true"]{background:var(--ink); color:var(--surface); font-weight:500}
+
+/* ---------- banners ---------- */
+.note{
+  display:flex; gap:10px; align-items:flex-start;
+  border:1px solid var(--ring); border-left:3px solid var(--muted);
+  background:var(--surface); border-radius:8px; padding:11px 14px; margin-bottom:14px;
+  font-size:13.5px; color:var(--ink-2); box-shadow:var(--shadow);
+}
+.note b{color:var(--ink); font-weight:500}
+.note .ic{flex:none; font-size:15px; line-height:1.35}
+.note.warn{border-left-color:var(--warn)}
+.note.info{border-left-color:var(--s1)}
+.note.crit{border-left-color:var(--critical)}
+.note.pending{border-left-color:var(--serious)}
+.note code{
+  font-family:ui-monospace,SFMono-Regular,Menlo,monospace; font-size:12.5px;
+  background:var(--surface-2); border:1px solid var(--ring); border-radius:4px; padding:1px 5px;
+}
+
+/* ---------- seções ---------- */
+section{margin:30px 0 0}
+.sec-head{display:flex; align-items:baseline; justify-content:space-between; gap:12px; margin:0 0 12px}
+h2{
+  font-family:"Bebas Neue","DM Sans",sans-serif; font-weight:400;
+  font-size:23px; letter-spacing:.03em; margin:0;
+}
+.sec-head .hint{font-size:12.5px; color:var(--muted)}
+
+/* ---------- KPI ---------- */
+.kpis{display:grid; grid-template-columns:repeat(auto-fit,minmax(178px,1fr)); gap:12px}
+.kpi{
+  background:var(--surface); border:1px solid var(--ring); border-radius:10px;
+  padding:15px 16px 14px; box-shadow:var(--shadow); position:relative;
+}
+.kpi .lab{
+  font-size:11px; letter-spacing:.09em; text-transform:uppercase;
+  color:var(--muted); font-weight:500; margin-bottom:7px; display:block;
+}
+.kpi .val{font-size:31px; font-weight:700; line-height:1.05; letter-spacing:-.02em}
+.kpi .val.sm{font-size:25px}
+.kpi .foot{font-size:12.5px; color:var(--ink-2); margin-top:6px}
+.kpi.hero{background:var(--ink); border-color:var(--ink)}
+.kpi.hero .lab{color:rgba(255,255,255,.62)}
+.kpi.hero .val{color:#fff; font-size:40px}
+.kpi.hero .foot{color:rgba(255,255,255,.76)}
+:root[data-theme="dark"] .kpi.hero{background:var(--accent); border-color:var(--accent)}
+:root[data-theme="dark"] .kpi.hero .lab{color:rgba(0,0,0,.60)}
+:root[data-theme="dark"] .kpi.hero .val{color:#111}
+:root[data-theme="dark"] .kpi.hero .foot{color:rgba(0,0,0,.74)}
+.kpi.empty .val{color:var(--muted); font-weight:500}
+
+/* ---------- cards / gráficos ---------- */
+.grid{display:grid; gap:14px}
+.g2{grid-template-columns:repeat(auto-fit,minmax(330px,1fr))}
+.card{
+  background:var(--surface); border:1px solid var(--ring); border-radius:10px;
+  padding:16px 18px 14px; box-shadow:var(--shadow);
+}
+.card h3{
+  font-size:14px; font-weight:500; margin:0 0 3px; letter-spacing:-.005em;
+}
+.card .cap{font-size:12.5px; color:var(--muted); margin:0 0 14px}
+.plot{position:relative; height:250px}
+.plot.tall{height:310px}
+.plot.short{height:180px}
+
+/* legenda */
+.leg{display:flex; flex-wrap:wrap; gap:14px; margin:12px 0 0; font-size:12.5px; color:var(--ink-2)}
+.leg span{display:inline-flex; align-items:center; gap:6px}
+.leg i{width:11px; height:11px; border-radius:3px; display:inline-block; flex:none}
+
+/* ---------- tabela ---------- */
+.tw{overflow-x:auto; margin-top:2px; border:1px solid var(--ring); border-radius:10px; background:var(--surface); box-shadow:var(--shadow)}
+table{border-collapse:collapse; width:100%; font-size:13px; min-width:660px}
+th,td{padding:9px 13px; text-align:left; border-bottom:1px solid var(--grid); white-space:nowrap}
+th{
+  font-size:10.5px; letter-spacing:.09em; text-transform:uppercase; color:var(--muted);
+  font-weight:500; background:var(--surface-2); position:sticky; top:0;
+}
+td.n{text-align:right; font-variant-numeric:tabular-nums}
+th.n{text-align:right}
+tbody tr:last-child td{border-bottom:0}
+tbody tr:hover td{background:var(--surface-2)}
+td.wrap-ok{white-space:normal; min-width:190px}
+.pill{
+  display:inline-flex; align-items:center; gap:5px; font-size:11.5px; font-weight:500;
+  border-radius:999px; padding:2px 9px; border:1px solid var(--ring);
+}
+.pill.paid{color:var(--good-text); border-color:color-mix(in srgb, var(--good) 40%, transparent)}
+.pill.wait{color:var(--serious); border-color:color-mix(in srgb, var(--serious) 45%, transparent)}
+.pill.ref{color:var(--critical); border-color:color-mix(in srgb, var(--critical) 40%, transparent)}
+.pill.bump{color:var(--ink-2)}
+
+/* ---------- estados ---------- */
+.stub{
+  border:1px dashed var(--ring); border-radius:10px; background:transparent;
+  padding:15px 16px; color:var(--muted);
+}
+.stub .lab{font-size:11px; letter-spacing:.09em; text-transform:uppercase; font-weight:500; display:block; margin-bottom:7px}
+.stub .val{font-size:26px; font-weight:500; color:var(--muted)}
+.stub .foot{font-size:12.5px; margin-top:6px}
+#loading,#erro{padding:38px 0; text-align:center; color:var(--muted); font-size:14px}
+#erro{color:var(--critical)}
+.hidden{display:none !important}
+
+footer{
+  margin-top:44px; padding-top:16px; border-top:1px solid var(--grid);
+  font-size:12.5px; color:var(--muted); display:flex; flex-wrap:wrap; gap:10px; justify-content:space-between;
+}
+@media (max-width:640px){
+  .plot{height:220px} .kpi .val{font-size:26px} .kpi.hero .val{font-size:33px}
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="top">
+    <div class="brand">
+      <div class="kicker">Agência B16 · Maestro Thiago Santos</div>
+      <h1>Ação de Webinário</h1>
+      <div class="sub">
+        Campanha <b>AAEMCWEB</b> · produto de entrada <b>Aula Especial — A Arte de Escutar Música Clássica</b>
+        · produto principal <b>Escola do Ouvido</b>
+      </div>
+    </div>
+    <div class="tools">
+      <div class="seg" role="group" aria-label="Período">
+        <button data-range="all" aria-pressed="true">Tudo</button>
+        <button data-range="7" aria-pressed="false">7 dias</button>
+        <button data-range="1" aria-pressed="false">Hoje</button>
+      </div>
+      <button class="btn" id="btn-tema" aria-pressed="false" title="Alternar tema">◐ Tema</button>
+      <button class="btn" id="btn-refresh">↻ Atualizar</button>
+    </div>
+  </header>
+
+  <div id="banners"></div>
+  <div id="loading">Carregando dados da Kiwify…</div>
+  <div id="erro" class="hidden"></div>
+
+  <main id="app" class="hidden">
+
+    <!-- ============ RESULTADO ============ -->
+    <section>
+      <div class="sec-head">
+        <h2>Resultado da ação</h2>
+        <span class="hint" id="janela-txt"></span>
+      </div>
+      <div class="kpis">
+        <div class="kpi hero">
+          <span class="lab">Faturamento</span>
+          <div class="val" id="k-fat">—</div>
+          <div class="foot" id="k-fat-foot">—</div>
+        </div>
+        <div class="kpi">
+          <span class="lab">Compras</span>
+          <div class="val" id="k-compras">—</div>
+          <div class="foot" id="k-compras-foot">—</div>
+        </div>
+        <div class="kpi">
+          <span class="lab">Ticket médio</span>
+          <div class="val" id="k-ticket">—</div>
+          <div class="foot" id="k-ticket-foot">—</div>
+        </div>
+        <div class="kpi">
+          <span class="lab">Taxa de aprovação</span>
+          <div class="val" id="k-aprov">—</div>
+          <div class="foot" id="k-aprov-foot">—</div>
+        </div>
+        <div class="kpi">
+          <span class="lab">Anexo de bump</span>
+          <div class="val" id="k-bump">—</div>
+          <div class="foot" id="k-bump-foot">—</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ MÍDIA (Stract) ============ -->
+    <section>
+      <div class="sec-head">
+        <h2>Mídia paga</h2>
+        <span class="hint">Meta Ads via Stract</span>
+      </div>
+      <div class="kpis" id="midia">
+        <div class="stub"><span class="lab">Investimento</span><div class="val">—</div><div class="foot">aguardando Stract</div></div>
+        <div class="stub"><span class="lab">CPA</span><div class="val">—</div><div class="foot">investimento ÷ compras</div></div>
+        <div class="stub"><span class="lab">ROAS</span><div class="val">—</div><div class="foot">faturamento ÷ investimento</div></div>
+        <div class="stub"><span class="lab">CPM</span><div class="val">—</div><div class="foot">aguardando Stract</div></div>
+      </div>
+    </section>
+
+    <!-- ============ EVOLUÇÃO ============ -->
+    <section>
+      <div class="sec-head"><h2>Evolução diária</h2></div>
+      <div class="grid g2">
+        <div class="card">
+          <h3>Compras por dia</h3>
+          <p class="cap">Sessões de checkout pagas. O rótulo em cima de cada barra é o número de compras.</p>
+          <div class="plot"><canvas id="c-dia"></canvas></div>
+        </div>
+        <div class="card">
+          <h3>Faturamento por dia</h3>
+          <p class="cap">Receita bruta das ordens pagas, incluindo order bumps.</p>
+          <div class="plot"><canvas id="c-fat"></canvas></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ FUNIL ============ -->
+    <section>
+      <div class="sec-head"><h2>Funil</h2></div>
+      <div class="grid g2">
+        <div class="card">
+          <h3>Da ordem gerada ao pagamento</h3>
+          <p class="cap">Cada ordem é um item de checkout. "Aguardando" é pix/boleto ainda em aberto — pode virar receita.</p>
+          <div class="plot short"><canvas id="c-funil"></canvas></div>
+        </div>
+        <div class="card" id="card-principal">
+          <h3>Entrada → produto principal</h3>
+          <p class="cap">Quantos compradores do webinário avançaram para a Escola do Ouvido.</p>
+          <div id="principal-box"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ PÚBLICO E CRIATIVO ============ -->
+    <section>
+      <div class="sec-head">
+        <h2>Público, criativo e posicionamento</h2>
+        <span class="hint">lido do parâmetro <code style="font-size:11.5px">sck</code> da Kiwify</span>
+      </div>
+      <div class="grid g2">
+        <div class="card">
+          <h3>Frio vs. quente</h3>
+          <p class="cap">Compras e faturamento por temperatura de público.</p>
+          <div class="plot short"><canvas id="c-publico"></canvas></div>
+          <div class="leg" id="leg-publico"></div>
+        </div>
+        <div class="card">
+          <h3>Conjuntos (adsets)</h3>
+          <p class="cap">Barra mais escura = mais compras.</p>
+          <div class="plot short"><canvas id="c-adset"></canvas></div>
+        </div>
+      </div>
+      <div class="grid g2" style="margin-top:14px">
+        <div class="card">
+          <h3>Criativos</h3>
+          <p class="cap">Ordenado por compras. Barra mais escura = mais compras.</p>
+          <div class="plot tall"><canvas id="c-criativo"></canvas></div>
+        </div>
+        <div class="card">
+          <h3>Posicionamentos</h3>
+          <p class="cap">Onde o anúncio estava quando gerou a compra.</p>
+          <div class="plot tall"><canvas id="c-posic"></canvas></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ BUMP ============ -->
+    <section>
+      <div class="sec-head">
+        <h2>Order bump</h2>
+        <span class="hint">o quanto o bump levanta o ticket</span>
+      </div>
+      <div class="grid g2">
+        <div class="card">
+          <h3>Ticket médio por compra</h3>
+          <p class="cap">Compras sem nenhum bump anexado vs. compras com pelo menos um.</p>
+          <div class="plot short"><canvas id="c-bump"></canvas></div>
+        </div>
+        <div class="card">
+          <h3>Produtos vendidos</h3>
+          <p class="cap">Itens pagos por produto. O de entrada abre a compra; os demais entram como bump.</p>
+          <div class="plot short"><canvas id="c-produto"></canvas></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ TABELA ============ -->
+    <section>
+      <div class="sec-head">
+        <h2>Transações</h2>
+        <span class="hint" id="tab-hint"></span>
+      </div>
+      <div class="tw">
+        <table id="tabela">
+          <thead><tr>
+            <th>Data</th><th>Ordem</th><th>Produto</th><th>Status</th>
+            <th>Público</th><th>Criativo</th><th>Posicionamento</th><th class="n">Valor</th>
+          </tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </section>
+
+    <footer>
+      <span>Agência B16 · Business Intelligence — Henrique Cardoso</span>
+      <span id="rodape-fonte"></span>
+    </footer>
+  </main>
+</div>
+
+<script>
+'use strict';
+
+/* =======================================================================
+   CONFIG
+   ======================================================================= */
+const SHEET_ID  = '1J_BryoZCsXPP-O9rJqrg1tqIMMpOIIOqoy1sno6Oz2k';
+const ABA       = 'kiwify_todos_produtos';
+const TAG       = 'aaemcweb';                 // marca da campanha no utm_campaign/sck
+const CAMPANHA  = 'aaemcwebnario';            // âncora usada para fatiar o sck
+const WORKER    = 'https://noisy-brook-b3b8.henrscard.workers.dev';
+
+const PROD_ENTRADA   = /aula especial.*arte de escutar/i;
+const PROD_PRINCIPAL = /escola do ouvido/i;
+
+// Colunas pedidas ao gviz — só o necessário. Nome, e-mail, CPF, telefone e IP
+// ficam de fora de propósito: este dashboard é público.
+const GVIZ_COLS = "select C,D,S,Y,AT,AW,BS where lower(AW) contains '" + TAG + "'";
+
+/* =======================================================================
+   UTIL
+   ======================================================================= */
+const $  = s => document.querySelector(s);
+const $$ = s => [...document.querySelectorAll(s)];
+const css = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+
+const brl = v => 'R$ ' + (v||0).toLocaleString('pt-BR',{minimumFractionDigits:2, maximumFractionDigits:2});
+const brlCurto = v => (v>=1000) ? 'R$ ' + (v/1000).toLocaleString('pt-BR',{maximumFractionDigits:1}) + 'k' : brl(v);
+const pct = (a,b) => b ? (a/b*100).toFixed(0) + '%' : '—';
+
+function num(s){
+  if (s == null) return 0;
+  const v = String(s).replace(/[^\d.,-]/g,'').replace(/\./g,'').replace(',','.');
+  const n = parseFloat(v);
+  return isNaN(n) ? 0 : n;
+}
+function dataBR(iso){
+  if (!iso) return '—';
+  const [d] = String(iso).split(' ');
+  const p = d.split('-');
+  return p.length === 3 ? `${p[2]}/${p[1]}` : d;
+}
+const esc = s => String(s==null?'':s).replace(/[&<>"']/g, c =>
+  ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+
+/* CSV com aspas, vírgulas e quebras dentro de campo */
+function parseCSV(txt){
+  const rows=[]; let row=[], f='', q=false;
+  for (let i=0;i<txt.length;i++){
+    const c = txt[i];
+    if (q){
+      if (c === '"'){ if (txt[i+1] === '"'){ f+='"'; i++; } else q=false; }
+      else f += c;
+    }
+    else if (c === '"') q = true;
+    else if (c === ',') { row.push(f); f=''; }
+    else if (c === '\n'){ row.push(f); f=''; rows.push(row); row=[]; }
+    else if (c !== '\r') f += c;
+  }
+  if (f.length || row.length){ row.push(f); rows.push(row); }
+  return rows;
+}
+
+/* =======================================================================
+   FONTE DE DADOS
+   Worker (service account) primeiro; planilha pública como plano B, e nesse
+   caso o banner deixa a dependência visível em vez de silenciosa.
+   ======================================================================= */
+let FONTE = null;
+
+async function carregar(){
+  try {
+    const u = `${WORKER}?sheet=${encodeURIComponent(ABA)}&lancamento=maestro&cols=C,D,S,Y,AT,AW,BS&cb=${Date.now()}`;
+    const r = await fetch(u, {cache:'no-store'});
+    if (r.ok){
+      const t = await r.text();
+      if (t && !t.trim().startsWith('{')){ FONTE = 'worker'; return parseCSV(t); }
+    }
+  } catch(e){ /* cai no plano B */ }
+
+  const u2 = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:csv`
+           + `&sheet=${encodeURIComponent(ABA)}&tq=${encodeURIComponent(GVIZ_COLS)}&cb=${Date.now()}`;
+  const r2 = await fetch(u2, {cache:'no-store'});
+  if (!r2.ok) throw new Error('Não consegui ler a planilha (HTTP ' + r2.status + ').');
+  FONTE = 'publico';
+  return parseCSV(await r2.text());
+}
+
+/* =======================================================================
+   MODELAGEM
+   1) 1 linha por order_ref  — estorno anula, pagamento vale, resto ignora.
+      (mesma regra validada no report semanal da B16; o webhook da Kiwify
+       chega fora de ordem, então "evento mais recente" está errado.)
+   2) 1 compra = 1 sessão de checkout — a Kiwify quebra order bump em
+      order_ref separados, mesmo comprador e mesmo minuto. Agrupar por
+      created_at + sck reproduz o agrupamento por e-mail sem trafegar PII.
+   ======================================================================= */
+const PESO = { refunded:3, chargedback:3, paid:2, approved:2 };
+const ehPago = s => s === 'paid' || s === 'approved';
+
+function modelar(rows){
+  const head = (rows[0]||[]).map(h => h.trim());
+  const ix = n => head.indexOf(n);
+  const C = {
+    ref: ix('order_ref'), st: ix('order_status'), cr: ix('created_at'),
+    prod: ix('Product_product_name'), sck: ix('TrackingParameters_sck'),
+    camp: ix('TrackingParameters_utm_campaign'), fat: ix('Faturamento'),
+  };
+  if (C.ref < 0 || C.st < 0) throw new Error('A planilha não trouxe as colunas esperadas.');
+
+  const ordens = new Map();
+  for (let i=1;i<rows.length;i++){
+    const r = rows[i];
+    if (!r || r.length < 4) continue;
+    const marca = ((r[C.camp]||'') + '|' + (r[C.sck]||'')).toLowerCase();
+    if (!marca.includes(TAG)) continue;
+    const ref = r[C.ref]; if (!ref) continue;
+
+    const st = (r[C.st]||'').toLowerCase();
+    const peso = PESO[st] || 1;
+    const atual = ordens.get(ref);
+    if (!atual || peso > atual.peso){
+      ordens.set(ref, {
+        ref, peso, status:st,
+        prod: r[C.prod] || '(sem produto)',
+        criado: r[C.cr] || '',
+        sck: r[C.sck] || '',
+        valor: num(r[C.fat]),
+        ...fatiarSck(r[C.sck]),
+      });
+    } else if (peso === atual.peso && !atual.valor){
+      atual.valor = num(r[C.fat]);
+    }
+  }
+  return [...ordens.values()].sort((a,b) => (a.criado < b.criado ? 1 : -1));
+}
+
+/* sck = {publico}-{adset}-aaemcwebnario-{criativo}-{posicionamento} */
+function fatiarSck(sck){
+  const vazio = { publico:'(sem tracking)', adset:'(sem tracking)', criativo:'(sem tracking)', posic:'(sem tracking)' };
+  if (!sck) return vazio;
+  const m = sck.match(new RegExp('^([^-]+)-(.*?)-' + CAMPANHA + '-(.*)$','i'));
+  if (!m) return vazio;
+  const resto = m[3];
+  const li = resto.lastIndexOf('-');
+  return {
+    publico: m[1].trim().toLowerCase(),
+    adset:   m[2].trim() || '(sem tracking)',
+    criativo: li > -1 ? resto.slice(0,li).trim() : resto.trim(),
+    posic:    li > -1 ? resto.slice(li+1).trim() : '(sem tracking)',
+  };
+}
+
+const chaveSessao = o => `${o.criado}|${o.sck}`;
+function agruparSessoes(pagas){
+  const m = new Map();
+  pagas.forEach(o => { const k = chaveSessao(o); if (!m.has(k)) m.set(k, []); m.get(k).push(o); });
+  return [...m.values()];
+}
+
+const somar = arr => arr.reduce((s,o) => s + o.valor, 0);
+function agrupar(arr, fn){
+  const m = new Map();
+  arr.forEach(o => { const k = fn(o) || '(sem tracking)'; if (!m.has(k)) m.set(k, []); m.get(k).push(o); });
+  return [...m.entries()]
+    .map(([k,v]) => ({ chave:k, itens:v, n:v.length, valor:somar(v) }))
+    .sort((a,b) => b.n - a.n || b.valor - a.valor);
+}
+
+/* =======================================================================
+   CHART.JS — base comum
+   ======================================================================= */
+const RAMPA_CLARA  = ['#104281','#184f95','#1c5cab','#256abf','#2a78d6','#3987e5','#5598e7','#6da7ec','#86b6ef'];
+const RAMPA_ESCURA = ['#cde2fb','#b7d3f6','#9ec5f4','#86b6ef','#6da7ec','#5598e7','#3987e5','#2a78d6','#256abf'];
+const escuro = () => document.documentElement.dataset.theme === 'dark';
+/* rampa ordinal: posição 0 = maior valor. Não desce abaixo do degrau que
+   ainda separa da superfície (250 no claro, 600 no escuro). */
+function rampa(n){
+  const base = escuro() ? RAMPA_ESCURA : RAMPA_CLARA;
+  if (n <= 1) return [base[escuro() ? 3 : 4]];
+  return Array.from({length:n}, (_,i) =>
+    base[Math.min(base.length-1, Math.round(i * (base.length-1) / Math.max(1,n-1)))]);
+}
+
+const graficos = {};
+function desenhar(id, cfg){
+  if (graficos[id]) graficos[id].destroy();
+  const el = document.getElementById(id);
+  if (!el) return;
+  graficos[id] = new Chart(el.getContext('2d'), cfg);
+}
+
+/* rótulo direto no fim da barra (exigido: legibilidade não depende só da cor) */
+const rotulos = {
+  id:'rotulos',
+  afterDatasetsDraw(ch, _a, opts){
+    const fmt = opts.fmt || (v => v);
+    const ctx = ch.ctx;
+    ctx.save();
+    ctx.font = '600 11.5px "DM Sans", system-ui, sans-serif';
+    ctx.fillStyle = css('--ink-2');
+    ch.data.datasets.forEach((ds, di) => {
+      if (ds._semRotulo) return;
+      ch.getDatasetMeta(di).data.forEach((el, i) => {
+        const v = ds.data[i]; if (v == null || v === 0) return;
+        const horiz = ch.options.indexAxis === 'y';
+        ctx.textAlign = horiz ? 'left' : 'center';
+        ctx.textBaseline = horiz ? 'middle' : 'bottom';
+        ctx.fillText(fmt(v), el.x + (horiz ? 7 : 0), el.y + (horiz ? 0 : -5));
+      });
+    });
+    ctx.restore();
+  }
+};
+Chart.register(rotulos);
+
+function eixos({horiz=false, moeda=false, maxPad=1.18} = {}){
+  const tick = { color: css('--muted'), font:{ family:'"DM Sans", system-ui, sans-serif', size:11.5 } };
+  const val = {
+    grid:{ color: css('--grid'), drawTicks:false },
+    border:{ color: css('--baseline') },
+    ticks:{ ...tick, precision: moeda ? undefined : 0,
+            callback: v => moeda ? brlCurto(v) : v },
+    grace: `${Math.round((maxPad-1)*100)}%`,
+  };
+  const cat = {
+    grid:{ display:false }, border:{ color: css('--baseline') },
+    ticks:{ ...tick, autoSkip:false, crossAlign: horiz ? 'far' : undefined },
+  };
+  return horiz ? { x: val, y: cat } : { x: cat, y: val };
+}
+
+function tooltip(fmt){
+  return {
+    enabled:true, backgroundColor: escuro() ? '#2c2c2a' : '#111',
+    titleColor:'#fff', bodyColor:'#fff', borderWidth:0, padding:10, cornerRadius:7,
+    displayColors:false,
+    titleFont:{ family:'"DM Sans", system-ui, sans-serif', size:12.5, weight:'500' },
+    bodyFont:{ family:'"DM Sans", system-ui, sans-serif', size:12.5 },
+    callbacks:{ label: fmt },
+  };
+}
+
+const BASE = {
+  responsive:true, maintainAspectRatio:false,
+  animation:{ duration:260 },
+  interaction:{ mode:'index', intersect:false },
+};
+const barra = { borderRadius:4, borderSkipped:false, borderWidth:2, maxBarThickness:44 };
+
+/* Elipse no MEIO, não no fim: nos nomes de conjunto o que distingue está no
+   final ("IG/FB Envolvimento 180D" vs "030D") e cortar a cauda colapsava dois
+   rótulos diferentes no mesmo texto. */
+function encurtar(s, n=32){
+  s = String(s);
+  if (s.length <= n) return s;
+  const cab = Math.ceil((n-1) * 0.55);
+  return s.slice(0, cab) + '…' + s.slice(-(n - 1 - cab));
+}
+
+/* =======================================================================
+   RENDER
+   ======================================================================= */
+let TODAS = [];
+
+function render(){
+  const dias = ($('.seg button[aria-pressed="true"]')||{}).dataset?.range || 'all';
+  let ordens = TODAS;
+  if (dias !== 'all'){
+    const corte = new Date(); corte.setHours(0,0,0,0);
+    corte.setDate(corte.getDate() - (parseInt(dias,10) - 1));
+    const iso = corte.toISOString().slice(0,10);
+    ordens = TODAS.filter(o => (o.criado||'').slice(0,10) >= iso);
+  }
+
+  const pagas    = ordens.filter(o => ehPago(o.status));
+  const esperando= ordens.filter(o => o.status === 'waiting_payment');
+  const recusadas= ordens.filter(o => o.status === 'refused');
+  const estornadas = ordens.filter(o => o.peso === 3);
+  const sessoes  = agruparSessoes(pagas);
+  const fat      = somar(pagas);
+  const comBump  = sessoes.filter(s => s.length > 1);
+  const semBump  = sessoes.filter(s => s.length === 1);
+
+  /* ---- janela ---- */
+  const datas = ordens.map(o => o.criado).filter(Boolean).sort();
+  $('#janela-txt').textContent = datas.length
+    ? `${dataBR(datas[0])} → ${dataBR(datas[datas.length-1])}` : '';
+
+  /* ---- KPIs ---- */
+  $('#k-fat').textContent = brl(fat);
+  $('#k-fat-foot').textContent = `${pagas.length} ${pagas.length===1?'item pago':'itens pagos'}`
+    + (estornadas.length ? ` · ${estornadas.length} estornado(s) fora da conta` : '');
+
+  $('#k-compras').textContent = sessoes.length;
+  $('#k-compras-foot').textContent = `${pagas.length} itens — bump entra na mesma compra`;
+
+  const ticket = sessoes.length ? fat / sessoes.length : 0;
+  $('#k-ticket').textContent = brl(ticket);
+  $('#k-ticket-foot').textContent = 'por compra, com bump incluso';
+
+  $('#k-aprov').textContent = pct(pagas.length, ordens.length);
+  $('#k-aprov-foot').textContent = `${esperando.length} aguardando · ${recusadas.length} recusada(s)`;
+
+  $('#k-bump').textContent = sessoes.length ? pct(comBump.length, sessoes.length) : '—';
+  $('#k-bump-foot').textContent = `${comBump.length} de ${sessoes.length} compras levaram bump`;
+
+  /* ---- evolução ---- */
+  const porDia = new Map();
+  sessoes.forEach(s => {
+    const d = (s[0].criado||'').slice(0,10); if (!d) return;
+    if (!porDia.has(d)) porDia.set(d, { n:0, v:0 });
+    const x = porDia.get(d); x.n++; x.v += somar(s);
+  });
+  const diasOrd = [...porDia.keys()].sort();
+  const rotDias = diasOrd.map(d => dataBR(d));
+
+  desenhar('c-dia', {
+    type:'bar',
+    data:{ labels:rotDias, datasets:[{
+      label:'Compras', data:diasOrd.map(d => porDia.get(d).n),
+      backgroundColor: css('--s1'), borderColor: css('--surface'), ...barra,
+    }]},
+    options:{ ...BASE, scales:eixos({}), plugins:{
+      legend:{display:false},
+      tooltip: tooltip(c => `${c.parsed.y} compra(s) · ${brl(porDia.get(diasOrd[c.dataIndex]).v)}`),
+      rotulos:{ fmt: v => v },
+    }},
+  });
+
+  desenhar('c-fat', {
+    type:'bar',
+    data:{ labels:rotDias, datasets:[{
+      label:'Faturamento', data:diasOrd.map(d => porDia.get(d).v),
+      backgroundColor: css('--accent'), borderColor: css('--surface'), ...barra,
+    }]},
+    options:{ ...BASE, scales:eixos({moeda:true}), plugins:{
+      legend:{display:false},
+      tooltip: tooltip(c => brl(c.parsed.y)),
+      rotulos:{ fmt: v => brlCurto(v) },
+    }},
+  });
+
+  /* ---- funil de status (rampa ordinal, uma cor só) ---- */
+  const etapas = [
+    ['Ordens geradas', ordens.length],
+    ['Pagas', pagas.length],
+    ['Aguardando pagamento', esperando.length],
+    ['Recusadas', recusadas.length],
+  ];
+  desenhar('c-funil', {
+    type:'bar',
+    data:{ labels:etapas.map(e=>e[0]), datasets:[{
+      data:etapas.map(e=>e[1]),
+      backgroundColor: rampa(etapas.length), borderColor: css('--surface'), ...barra,
+    }]},
+    options:{ ...BASE, indexAxis:'y', scales:eixos({horiz:true, maxPad:1.22}), plugins:{
+      legend:{display:false},
+      tooltip: tooltip(c => `${c.parsed.x} ordem(ns) · ${pct(c.parsed.x, ordens.length)} do total`),
+      rotulos:{ fmt: v => v },
+    }},
+  });
+
+  /* ---- entrada → principal ---- */
+  const entrada   = pagas.filter(o => PROD_ENTRADA.test(o.prod));
+  const principal = pagas.filter(o => PROD_PRINCIPAL.test(o.prod));
+  $('#principal-box').innerHTML = principal.length ? `
+    <div class="kpis" style="grid-template-columns:1fr 1fr">
+      <div class="kpi"><span class="lab">Entrada</span><div class="val">${entrada.length}</div>
+        <div class="foot">Aula Especial</div></div>
+      <div class="kpi"><span class="lab">Principal</span><div class="val">${principal.length}</div>
+        <div class="foot">${pct(principal.length, entrada.length)} de conversão</div></div>
+    </div>` : `
+    <div class="kpis" style="grid-template-columns:1fr 1fr">
+      <div class="kpi"><span class="lab">Entrada</span><div class="val">${entrada.length}</div>
+        <div class="foot">Aula Especial</div></div>
+      <div class="kpi empty"><span class="lab">Principal</span><div class="val sm">Sem venda</div>
+        <div class="foot">Escola do Ouvido</div></div>
+    </div>
+    <div class="note pending" style="margin:14px 0 0">
+      <span class="ic">◷</span>
+      <div>Nenhuma venda da <b>Escola do Ouvido</b> atribuída à campanha até agora — e nenhuma
+      na base desde o início da ação, com ou sem UTM. Ou o pitch ainda não abriu, ou a venda do
+      principal não está carregando o parâmetro. <b>Vale confirmar com o Peterson qual dos dois é.</b></div>
+    </div>`;
+
+  /* ---- público: 2 séries, slots categóricos 1 e 2 ---- */
+  const pubs = agrupar(pagas, o => o.publico);
+  const CORPUB = { frio: css('--s1'), quente: css('--s2') };
+  desenhar('c-publico', {
+    type:'bar',
+    data:{ labels:pubs.map(p => p.chave), datasets:[{
+      data:pubs.map(p => p.n),
+      backgroundColor: pubs.map(p => CORPUB[p.chave] || css('--s3')),
+      borderColor: css('--surface'), ...barra,
+    }]},
+    options:{ ...BASE, indexAxis:'y', scales:eixos({horiz:true, maxPad:1.22}), plugins:{
+      legend:{display:false},
+      tooltip: tooltip(c => `${c.parsed.x} compra(s) · ${brl(pubs[c.dataIndex].valor)}`),
+      rotulos:{ fmt: v => v },
+    }},
+  });
+  $('#leg-publico').innerHTML = pubs.map(p =>
+    `<span><i style="background:${CORPUB[p.chave] || css('--s3')}"></i>${esc(p.chave)} — ${p.n} compra(s), ${brl(p.valor)}</span>`
+  ).join('');
+
+  /* ---- adsets / criativos / posicionamentos: magnitude → rampa de um tom ---- */
+  const barraOrdinal = (id, grupos, corte) => {
+    const g = grupos.slice(0, corte);
+    desenhar(id, {
+      type:'bar',
+      data:{ labels:g.map(x => encurtar(x.chave, 34)), datasets:[{
+        data:g.map(x => x.n),
+        backgroundColor: rampa(g.length), borderColor: css('--surface'), ...barra,
+      }]},
+      options:{ ...BASE, indexAxis:'y', scales:eixos({horiz:true, maxPad:1.24}), plugins:{
+        legend:{display:false},
+        tooltip: tooltip(c => `${g[c.dataIndex].chave} — ${c.parsed.x} compra(s) · ${brl(g[c.dataIndex].valor)}`),
+        rotulos:{ fmt: v => v },
+      }},
+    });
+  };
+  const adsets = agrupar(pagas, o => o.adset);
+  barraOrdinal('c-adset', adsets, 6);
+  barraOrdinal('c-criativo', agrupar(pagas, o => o.criativo), 8);
+  barraOrdinal('c-posic',    agrupar(pagas, o => o.posic),    8);
+
+  /* ---- bump ---- */
+  const tSem = semBump.length ? somar(semBump.flat()) / semBump.length : 0;
+  const tCom = comBump.length ? somar(comBump.flat()) / comBump.length : 0;
+  desenhar('c-bump', {
+    type:'bar',
+    data:{ labels:['Sem bump','Com bump'], datasets:[{
+      data:[tSem, tCom],
+      backgroundColor:[ css('--muted'), css('--accent') ],
+      borderColor: css('--surface'), ...barra,
+    }]},
+    options:{ ...BASE, scales:eixos({moeda:true, maxPad:1.24}), plugins:{
+      legend:{display:false},
+      tooltip: tooltip(c => `${brl(c.parsed.y)} — ${c.dataIndex ? comBump.length : semBump.length} compra(s)`),
+      rotulos:{ fmt: v => brl(v) },
+    }},
+  });
+
+  const prods = agrupar(pagas, o => o.prod);
+  desenhar('c-produto', {
+    type:'bar',
+    data:{ labels:prods.map(p => encurtar(p.chave, 32)), datasets:[{
+      data:prods.map(p => p.n),
+      backgroundColor: prods.map(p => PROD_ENTRADA.test(p.chave) ? css('--s1') : css('--muted')),
+      borderColor: css('--surface'), ...barra,
+    }]},
+    options:{ ...BASE, indexAxis:'y', scales:eixos({horiz:true, maxPad:1.24}), plugins:{
+      legend:{display:false},
+      tooltip: tooltip(c => `${prods[c.dataIndex].chave} — ${c.parsed.x} item(ns) · ${brl(prods[c.dataIndex].valor)}`),
+      rotulos:{ fmt: v => v },
+    }},
+  });
+
+  /* ---- tabela ---- */
+  const chavesComBump = new Set(comBump.map(s => chaveSessao(s[0])));
+  const PILL = { paid:['paid','pago'], approved:['paid','pago'],
+                 waiting_payment:['wait','aguardando'], refused:['ref','recusada'],
+                 refunded:['ref','estornada'], chargedback:['ref','chargeback'] };
+  $('#tabela tbody').innerHTML = ordens.map(o => {
+    const [cls, txt] = PILL[o.status] || ['', o.status];
+    const bump = ehPago(o.status) && chavesComBump.has(chaveSessao(o)) && !PROD_ENTRADA.test(o.prod);
+    return `<tr>
+      <td>${esc(dataBR(o.criado))}</td>
+      <td><code style="font-size:12px">${esc(o.ref)}</code></td>
+      <td class="wrap-ok">${esc(o.prod)}${bump ? ' <span class="pill bump">bump</span>' : ''}</td>
+      <td><span class="pill ${cls}">${esc(txt)}</span></td>
+      <td>${esc(o.publico)}</td>
+      <td class="wrap-ok">${esc(o.criativo)}</td>
+      <td>${esc(o.posic)}</td>
+      <td class="n">${esc(brl(o.valor))}</td>
+    </tr>`;
+  }).join('');
+  $('#tab-hint').textContent = `${ordens.length} ordens · sem dados pessoais`;
+
+  banners(adsets);
+}
+
+/* =======================================================================
+   BANNERS — o que o gestor precisa saber antes de olhar os números
+   ======================================================================= */
+function banners(adsets){
+  const out = [];
+
+  if (FONTE === 'publico'){
+    out.push(`<div class="note warn"><span class="ic">▲</span><div>
+      Lendo direto da <b>planilha pública</b> do Maestro. Funciona, mas prende o dashboard
+      a ela continuar aberta. O caminho definitivo é o Worker com service account
+      (<code>worker.js</code> neste repo) — aí a planilha pode ser fechada.</div></div>`);
+  }
+
+  const macro = adsets.find(a => /\{\{|\}\}/.test(a.chave));
+  if (macro){
+    out.push(`<div class="note crit"><span class="ic">■</span><div>
+      <b>Erro de tracking na Meta:</b> ${macro.n} compra(s) chegaram com a macro
+      <code>{{adset.name}}</code> literal no lugar do nome do conjunto — a macro não foi
+      interpolada. Essas vendas <b>perdem a atribuição de conjunto</b>. Corrigir o parâmetro
+      de URL do anúncio; o histórico já gravado não volta.</div></div>`);
+  }
+
+  const semTrack = TODAS.filter(o => o.publico === '(sem tracking)').length;
+  if (semTrack){
+    out.push(`<div class="note info"><span class="ic">●</span><div>
+      ${semTrack} ordem(ns) sem <code>sck</code> legível — entram nos totais, mas ficam fora
+      dos cortes por público, criativo e posicionamento.</div></div>`);
+  }
+
+  $('#banners').innerHTML = out.join('');
+  $('#rodape-fonte').textContent =
+    (FONTE === 'worker' ? 'Fonte: Worker B16 (service account)' : 'Fonte: planilha pública')
+    + ' · atualizado ' + new Date().toLocaleString('pt-BR');
+}
+
+/* =======================================================================
+   BOOT
+   ======================================================================= */
+async function boot(){
+  $('#loading').classList.remove('hidden');
+  $('#erro').classList.add('hidden');
+  try {
+    TODAS = modelar(await carregar());
+    $('#loading').classList.add('hidden');
+    $('#app').classList.remove('hidden');
+    if (!TODAS.length){
+      $('#banners').innerHTML = `<div class="note warn"><span class="ic">▲</span><div>
+        Nenhuma ordem com a tag <code>${TAG}</code> na planilha ainda.</div></div>`;
+    }
+    render();
+  } catch(e){
+    $('#loading').classList.add('hidden');
+    $('#erro').classList.remove('hidden');
+    $('#erro').textContent = 'Não consegui carregar: ' + e.message;
+  }
+}
+
+$('#btn-refresh').addEventListener('click', boot);
+
+$$('.seg button').forEach(b => b.addEventListener('click', () => {
+  $$('.seg button').forEach(x => x.setAttribute('aria-pressed','false'));
+  b.setAttribute('aria-pressed','true');
+  render();
+}));
+
+$('#btn-tema').addEventListener('click', () => {
+  const esc2 = document.documentElement.dataset.theme === 'dark';
+  document.documentElement.dataset.theme = esc2 ? 'light' : 'dark';
+  $('#btn-tema').setAttribute('aria-pressed', String(!esc2));
+  try { localStorage.setItem('b16-tema', document.documentElement.dataset.theme); } catch(e){}
+  if (TODAS.length) render();   // as cores vêm do CSS: precisa redesenhar
+});
+
+try {
+  const t = localStorage.getItem('b16-tema');
+  if (t){ document.documentElement.dataset.theme = t; $('#btn-tema').setAttribute('aria-pressed', String(t==='dark')); }
+} catch(e){}
+
+boot();
+</script>
+</body>
+</html>
