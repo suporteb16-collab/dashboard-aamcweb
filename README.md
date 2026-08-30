@@ -20,6 +20,8 @@ publishable. Não há mais leitura de planilha.
 |---|---|---|
 | `public.dash_aaemcweb_vendas` | `public.transacoes_vendas` (Kiwify) | vendas da campanha, sem dado pessoal |
 | `public.dash_aaemcweb_midia` | `"trafego-pago".meta_ads_aaemcweb` (Meta Ads via Stract) | gasto, impressões, cliques, LPV, checkouts por dia/anúncio |
+| `public.dash_aaemcweb_principal` | `public.transacoes_vendas` (Kiwify) | vendas da **Escola do Ouvido** feitas por quem entrou pela campanha — o fundo do funil |
+| `public.dash_aaemcweb_referencia` | `public.transacoes_vendas` (Kiwify) | preço mediano do principal nos últimos 180 dias, usado no break-even |
 
 ### Por que views e não as tabelas direto
 
@@ -54,6 +56,53 @@ R$ 83,52; a Kiwify tem 16 itens / R$ 128,79. O pixel sub-reporta (normal). Quem 
 no ROAS é a Kiwify — venda de verdade. O funil usa pixel nas etapas de mídia e Kiwify
 na última, e isso está dito no próprio card.
 
+**3. O fundo do funil não pode depender da utm.** O checkout da Escola do Ouvido **não
+carrega o parâmetro da campanha**: das 148 vendas pagas do principal na base, **zero**
+têm a tag `aaemcweb` — elas chegam como `campanha = 'Direto'` ou orgânico do Google. Se
+o dashboard esperasse a utm, o fundo do funil ficaria zerado para sempre e o ROAS nunca
+fecharia, mesmo com o pitch vendendo.
+
+Por isso a `dash_aaemcweb_principal` atribui **por coorte**: quem entrou pela campanha
+(comprou ou tentou comprar com a tag) e **depois** comprou o principal. Ela conta só
+**venda nova, paga, de 24/08/2026 em diante**. Detalhes que não são decoração:
+
+- **Recorte em 24/08/2026** — primeiro dia de mídia da campanha. Sem o piso entram dois
+  anos de histórico da Escola do Ouvido que não têm nada a ver com a ação. O mesmo piso
+  está na `dash_aaemcweb_vendas` (lá não muda número nenhum hoje, é guarda).
+- **Renovação sai — e a coluna `e_renovacao` não serve para detectá-la.** Ela está
+  `false` nas **18.004 linhas** da base: zero `true`, zero nulo. A ingestão nunca a
+  preencheu. O que separa de verdade é a **ordem de compra do e-mail**: a primeira
+  compra paga do principal em toda a história é venda nova, qualquer outra é renovação.
+  A base confirma o padrão de assinatura — mesmo e-mail, R$ 92,44, de ~30 em 30 dias,
+  até 10 vezes seguidas. Aplicada à história inteira, a regra separa **179 vendas novas
+  (mediana R$ 942,96)** de **33 renovações (mediana R$ 92,44)**.
+  O `row_number` roda **sem filtro de data**; se rodasse dentro da janela, uma compra
+  antiga cairia fora e a renovação seria promovida a "primeira".
+
+- O corte `data_criacao >= entrou` é obrigatório. Sem ele, um aluno que já tinha
+  comprado a Escola do Ouvido em **2024** e voltou pelo webinário aparece como conversão
+  nova — é exatamente o caso que existe na base hoje, e é por isso que a view devolve
+  0 linhas em vez de 1.
+- No dashboard, vendas do principal são **removidas** do lado da entrada antes de somar.
+  Hoje não há sobreposição, mas se um dia o link do pitch passar a carregar a utm a
+  mesma venda cairia nas duas views e o faturamento dobraria.
+
+O ROAS soma entrada + principal; o ticket médio usa **só** a entrada (misturar um
+produto de R$ 6,96 com um de R$ 768,73 produz um número que não descreve nenhum dos
+dois). O KPI **Break-even** diz quantas vendas do principal ainda faltam para pagar a
+mídia: enquanto não houver venda, o preço vem da mediana histórica
+(`dash_aaemcweb_referencia`, hoje R$ 768,73); depois passa a usar o preço praticado.
+A referência também conta só venda nova — renovação a R$ 92,44 puxaria a mediana para
+baixo e o break-even prometeria um número de vendas que não paga a mídia.
+
+### Sobre `status`
+
+Venda paga aqui é **`status = 'paid'`**, e só. A base tem 19 registros com status
+sujo — `paided` (8), `refuseded` (8), `refund_requested` (2) e um nulo — mas **nenhum
+deles é do núcleo `maestro`**: são todos de Mundial Cromo e Revista Catolicismo.
+Não existe `approved` na base. Vale o alerta para os **outros** dashboards da B16,
+onde esses registros existem e podem estar caindo fora da conta.
+
 ### Cruzamento mídia × venda
 
 | Dimensão | Meta Ads | Kiwify |
@@ -74,9 +123,13 @@ Os nomes batem exatamente entre as duas fontes — **exceto** nas vendas em que 
    Nenhum criativo passa de ROAS 0,69×. Com o produto de entrada a R$ 6,96, a conta só
    fecha se a Escola do Ouvido converter — e ela não vendeu nada.
 
-2. 🟡 **`Escola do Ouvido` com zero venda.** Nenhuma na campanha e nenhuma na base
-   desde 25/08. Ou o pitch ainda não abriu, ou a venda do principal não carrega o
-   parâmetro — **confirmar com o Peterson qual dos dois**.
+2. 🟡 **`Escola do Ouvido` com zero venda — e o rastreio dela é por coorte, não por
+   utm.** A dúvida anterior ("pitch não abriu ou parâmetro não chega?") está resolvida:
+   **as duas coisas**. O pitch ainda não abriu *e* o checkout do principal nunca carrega
+   o parâmetro da campanha. O fundo do funil já está ligado e preenche sozinho a cada
+   pitch semanal, mas a atribuição é por comprador — se alguém assistir à aula e comprar
+   com **outro e-mail**, a venda não é contada. Vale pedir ao Peterson que o link do
+   pitch leve `utm_campaign=aaemcwebnario`: aí a venda é capturada pelos dois caminhos.
 
 3. 🟡 **Erro de tracking na Meta.** 3 vendas chegaram com a macro `{{adset.name}}`
    literal no lugar do nome do conjunto. Entram nos totais, mas não casam com o gasto
@@ -113,4 +166,13 @@ separação para daltonismo, contraste). Duas decisões que saíram disso:
 | `index.html` | o dashboard |
 | `worker.js` | **legado** — proxy Cloudflare da versão que lia a planilha. Não é mais usado por este dashboard; fica aqui porque o parâmetro `cols` que ele ganhou serve aos outros dashboards da B16 |
 
-**Agência B16** — Henrique Cardoso, Business Intelligence · 29/08/2026.
+---
+
+## Deploy
+
+Esta pasta **não é um repositório git** — ela é a cópia de trabalho. O que está no ar
+vem de `suporteb16-collab/dashboard-aamcweb` (GitHub Pages), publicado à mão. Depois de
+mexer no `index.html`, subir o arquivo para lá; o Pages republica sozinho.
+
+**Agência B16** — Henrique Cardoso, Business Intelligence · 29/08/2026,
+atualizado em 30/08/2026.
