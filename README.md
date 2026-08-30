@@ -70,8 +70,16 @@ Por isso a `dash_aaemcweb_principal` atribui **por coorte**: quem entrou pela ca
   anos de histórico da Escola do Ouvido que não têm nada a ver com a ação. O mesmo piso
   está na `dash_aaemcweb_vendas` (lá não muda número nenhum hoje, é guarda).
 - **Renovação sai — e a coluna `e_renovacao` não serve para detectá-la.** Ela está
-  `false` nas **18.004 linhas** da base: zero `true`, zero nulo. A ingestão nunca a
-  preencheu. O que separa de verdade é a **ordem de compra do e-mail**: a primeira
+  `false` nas **18.004 linhas** da base: zero `true`, zero nulo. E é de propósito: no
+  workflow `[B16] Kiwify to Supabase - Full Sync`, os quatro nós "Normaliza" **descartam
+  renovação antes de gravar** (`if (types.includes('subscription_renewed')) continue;`)
+  e por isso escrevem `e_renovacao: false` fixo — a coluna ainda tem `default false` no
+  banco, então nem nulo sobra. Ou seja: a coluna é uma tautologia, não um dado.
+  **O problema é que esse filtro vaza.** Há 33 linhas com o padrão exato de assinatura
+  na base. Como o `continue` é incondicional, é certo que o grupo de eventos delas não
+  trazia `subscription_renewed` — a Kiwify cobra cada renovação como **pedido próprio,
+  com `order_ref` próprio**, e o filtro agrupa justamente por `order_ref`.
+  O que separa de verdade é a **ordem de compra do e-mail**: a primeira
   compra paga do principal em toda a história é venda nova, qualquer outra é renovação.
   A base confirma o padrão de assinatura — mesmo e-mail, R$ 92,44, de ~30 em 30 dias,
   até 10 vezes seguidas. Aplicada à história inteira, a regra separa **179 vendas novas
@@ -97,11 +105,19 @@ baixo e o break-even prometeria um número de vendas que não paga a mídia.
 
 ### Sobre `status`
 
-Venda paga aqui é **`status = 'paid'`**, e só. A base tem 19 registros com status
-sujo — `paided` (8), `refuseded` (8), `refund_requested` (2) e um nulo — mas **nenhum
-deles é do núcleo `maestro`**: são todos de Mundial Cromo e Revista Catolicismo.
-Não existe `approved` na base. Vale o alerta para os **outros** dashboards da B16,
-onde esses registros existem e podem estar caindo fora da conta.
+Venda paga aqui é **`status = 'paid'`**, e só. Não existe `approved` na base.
+
+A base tem 19 registros com status terminado em `-ed` — `paided` (8), `refuseded` (8) —
+mais `refund_requested` (2) e um nulo. Os `-ed` **não são erro de digitação**: são
+marcação manual, feita quando um erro de webhook duplica a transação; o sufixo neutraliza
+a linha duplicada sem apagá-la. Logo, **elas devem mesmo ficar fora da contagem**, e
+filtrar por `paid` já faz isso. Nenhuma é do núcleo `maestro` — são todas de Mundial
+Cromo e Revista Catolicismo.
+
+A correção tem que ser feita **na planilha do Google, não no Supabase**: o Full Sync roda
+7h e 15h com `Prefer: resolution=merge-duplicates` sobre a PK `order_ref` e reescreve
+`status` a cada rodada, então uma edição feita direto no banco volta atrás na
+sincronização seguinte.
 
 ### Cruzamento mídia × venda
 
