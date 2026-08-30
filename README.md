@@ -170,9 +170,13 @@ separação para daltonismo, contraste). Duas decisões que saíram disso:
 
 ## Deploy
 
-Esta pasta **não é um repositório git** — ela é a cópia de trabalho. O que está no ar
-vem de `suporteb16-collab/dashboard-aamcweb` (GitHub Pages), publicado à mão. Depois de
-mexer no `index.html`, subir o arquivo para lá; o Pages republica sozinho.
+Esta pasta é o repositório git, ligado a `suporteb16-collab/dashboard-aamcweb`
+(branch `main`, GitHub Pages). `git push origin main` e o Pages republica em ~20s.
+
+O repo é **compartilhado com o resto da B16**: `git fetch` antes de começar a mexer.
+A credencial do GitHub está no Windows Credential Manager, então o push não pede login.
+Até 30/08/2026 a pasta era só uma cópia solta e o deploy era manual — se o histórico
+parecer curto, é por isso.
 
 **Agência B16** — Henrique Cardoso, Business Intelligence · 29/08/2026,
 atualizado em 30/08/2026.
