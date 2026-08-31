@@ -168,10 +168,46 @@ separação para daltonismo, contraste). Duas decisões que saíram disso:
 
 - **Só 2 slots categóricos** (amarelo = investido, azul = faturado). O conjunto
   clássico de 4 (amarelo/verde/azul/rosa) não passa na separação para daltonismo com
-  4 séries na tela — verde↔amarelo e verde↔rosa ficam indistinguíveis. Os cortes por
-  magnitude usam rampa de um tom só.
+  4 séries na tela — verde↔amarelo e verde↔rosa ficam indistinguíveis.
 - **Toda barra leva rótulo direto.** O amarelo da marca fica abaixo de 3:1 no tema
   claro; o rótulo é o que garante que a leitura nunca dependa só da cor.
+
+### O funil
+
+É o **funil em trapézio do Mundial Cromo**, em CSS puro: cada etapa é uma faixa que
+estreita, com o valor à esquerda, o **custo daquela etapa** à direita (CPM, CPC, custo
+por LPV, custo por checkout, CPA) e a taxa de passagem na pílula entre as faixas. Foi
+para isso que ele trocou de forma — o gráfico de barras em escala log mostrava o volume
+mas escondia onde o dinheiro estava caro.
+
+Três decisões dentro dele:
+
+- **A magnitude está na largura, não na cor** — todas as faixas usam o mesmo amarelo.
+  Uma rampa escurecendo por baixo do texto escuro cairia para ~2,6:1 nos degraus finais.
+- **O texto é `#111` literal, não `var(--black)`.** No tema escuro essa variável vira
+  clara e sumiria dentro do amarelo, que é a mesma cor nos dois temas.
+- **A última faixa usa `#2563eb`, não o `--cat2` (`#3b82f6`).** É o slot azul da paleta,
+  num tom fundo o bastante para o texto branco passar em 4,5:1 — o azul do resto do
+  dashboard não passa quando vira preenchimento com texto em cima.
+
+A primeira passagem do funil é um CTR, que vive abaixo de 5%; ela sai com **uma casa
+decimal** abaixo de 10%, senão 4,2% e 4,8% viram o mesmo "4%". E sem investimento na
+janela o custo por etapa sai como `—`, não `R$ 0,00`, que se leria como "saiu de graça".
+
+### Filtro de período
+
+Além de *Tudo · 7 dias · Hoje*, há **Período** com data inicial e final livres. Os três
+modos viram o mesmo par `[de, ate]`, então o filtro é um só. Detalhes:
+
+- Os campos abrem ancorados no `min`/`max` do dado carregado, já preenchidos com o
+  intervalo inteiro — abrir o modo não deixa o dashboard vazio esperando duas datas.
+- **Datas invertidas são trocadas de ordem** e os campos reescritos, com aviso. Sem
+  isso o resultado seria um dashboard zerado com cara de quebrado.
+- Se o recorte não pegar nada, o cabeçalho mostra o período pedido com "sem dado no
+  período" em vez de ficar em branco.
+- O botão **Máximo** volta ao intervalo inteiro sem sair do modo Período.
+- As datas usam `isoLocal()`, não `toISOString()` — este converte para UTC antes de
+  cortar e troca o dia em qualquer fuso a leste de Greenwich.
 
 ---
 

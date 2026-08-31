@@ -66,6 +66,14 @@ header.top{
 .seg button{font:inherit; font-size:13px; border:0; background:transparent; color:var(--muted); padding:7px 12px; cursor:pointer}
 .seg button[aria-pressed="true"]{background:var(--black); color:var(--surface); font-weight:500}
 
+/* faixa de datas: ocupa a linha inteira do .tools para nao espremer os botoes no
+   celular. Os inputs sao nativos — herdam o color-scheme do html.dark sozinhos. */
+.dtr{display:none; flex-basis:100%; align-items:center; gap:8px; flex-wrap:wrap; font-size:13px; color:var(--muted)}
+.dtr.on{display:flex}
+.dtr label{display:inline-flex; align-items:center; gap:6px}
+.dtr input[type="date"]{font:inherit; font-size:13px; color:var(--text); background:var(--surface); border:1px solid var(--border2); border-radius:8px; padding:6px 9px}
+.dtr .aviso{color:var(--warn)}
+
 .note{display:flex; gap:10px; align-items:flex-start; border:1px solid var(--border); border-left:3px solid var(--muted); background:var(--surface); border-radius:8px; padding:11px 14px; margin-bottom:12px; font-size:13.5px; color:var(--muted); box-shadow:var(--shadow)}
 .note b{color:var(--text); font-weight:500}
 .note .ic{flex:none}
@@ -111,6 +119,37 @@ html.dark .kpi.hero .foot{color:var(--muted)}
 .leg{display:flex; flex-wrap:wrap; gap:14px; margin:12px 0 0; font-size:12.5px; color:var(--muted)}
 .leg span{display:inline-flex; align-items:center; gap:6px}
 .leg i{width:11px; height:11px; border-radius:3px; display:inline-block; flex:none}
+
+/* Funil em trapézio, igual ao do Mundial Cromo: cada etapa é uma faixa que estreita,
+   com o valor à esquerda e o custo da etapa à direita, e a taxa de passagem no meio.
+   Quem carrega a magnitude é a LARGURA, não a cor — por isso todas as faixas usam o
+   mesmo amarelo. Ramp escurecendo reprovaria no contraste do texto escuro em cima.
+   O texto é `#111` literal, não var(--black): no tema escuro essa variável vira clara
+   e sumiria dentro do amarelo, que é a mesma cor nos dois temas. */
+.funil{display:flex; flex-direction:column; align-items:center; margin-top:4px}
+.ftrap{background:var(--cat1); border-radius:4px; display:flex; align-items:center; justify-content:space-between;
+       gap:14px; padding:0 20px; height:60px; margin:0 auto; min-width:190px;
+       clip-path:polygon(3% 0%, 97% 0%, 100% 100%, 0% 100%)}
+/* etapa final = dinheiro que entrou: slot azul da paleta, num tom fundo o bastante
+   para o texto branco passar em 4.5:1 (o #3b82f6 do resto do dash não passa) */
+.ftrap.fim{background:#2563eb}
+.ft-left{display:flex; flex-direction:column; min-width:0}
+.ft-name{font-size:10px; font-weight:700; letter-spacing:.12em; text-transform:uppercase; color:rgba(17,17,17,.62); white-space:nowrap}
+.ft-val{font-family:"Bebas Neue","DM Sans",sans-serif; font-size:29px; line-height:1; color:#111; letter-spacing:.01em}
+.ft-right{text-align:right; white-space:nowrap}
+.ft-cost{font-family:"Bebas Neue","DM Sans",sans-serif; font-size:23px; line-height:1; color:#111}
+.ft-cost-lbl{font-size:10px; color:rgba(17,17,17,.62); margin-top:3px}
+.ftrap.fim .ft-name, .ftrap.fim .ft-cost-lbl{color:rgba(255,255,255,.75)}
+.ftrap.fim .ft-val, .ftrap.fim .ft-cost{color:#fff}
+.fc{display:flex; flex-direction:column; align-items:center; margin:3px auto}
+.fc-line{width:2px; height:11px; background:var(--border2)}
+.fc-tag{background:var(--surface2); border:1px solid var(--border2); color:var(--text); font-size:10.5px;
+        font-weight:500; padding:3px 11px; border-radius:20px; white-space:nowrap}
+@media (max-width:520px){
+  .ftrap{height:52px; padding:0 13px; gap:8px}
+  .ft-val{font-size:23px} .ft-cost{font-size:18px}
+  .ft-cost-lbl,.ft-name{font-size:9px}
+}
 
 /* lista de pitches: o card do principal é meia-largura, tabela de verdade não cabe */
 .pitches{margin:16px 0 0; border-top:1px solid var(--border)}
@@ -163,9 +202,16 @@ footer{margin-top:44px; padding-top:16px; border-top:1px solid var(--border); fo
         <button data-range="all" aria-pressed="true">Tudo</button>
         <button data-range="7" aria-pressed="false">7 dias</button>
         <button data-range="1" aria-pressed="false">Hoje</button>
+        <button data-range="custom" aria-pressed="false">Período</button>
       </div>
       <button class="btn" id="btn-tema">◐ Tema</button>
       <button class="btn" id="btn-refresh">↻ Atualizar</button>
+      <div class="dtr" id="dtr">
+        <label>De <input type="date" id="dt-de" aria-label="Data inicial"></label>
+        <label>Até <input type="date" id="dt-ate" aria-label="Data final"></label>
+        <button class="btn" id="dt-tudo">Máximo</button>
+        <span class="aviso hidden" id="dt-aviso">datas invertidas — troquei a ordem</span>
+      </div>
     </div>
   </header>
 
@@ -209,8 +255,9 @@ footer{margin-top:44px; padding-top:16px; border-top:1px solid var(--border); fo
       <div class="grid g2">
         <div class="card">
           <h3>Do anúncio à compra paga</h3>
-          <p class="cap">Etapas de mídia vêm do pixel; a última vem da Kiwify (venda de verdade).</p>
-          <div class="plot"><canvas id="c-funil"></canvas></div>
+          <p class="cap">Etapas de mídia vêm do pixel; a última vem da Kiwify (venda de verdade).
+          À direita, o custo de cada etapa; entre elas, quanto passou da anterior.</p>
+          <div id="funil-box"></div>
         </div>
         <div class="card">
           <h3>Entrada → produto principal</h3>
@@ -330,9 +377,16 @@ const brl = v => 'R$ ' + (v||0).toLocaleString('pt-BR',{minimumFractionDigits:2,
 const brlCurto = v => Math.abs(v) >= 1000
   ? 'R$ ' + (v/1000).toLocaleString('pt-BR',{maximumFractionDigits:1}) + 'k' : brl(v);
 const pct = (a,b) => b ? (a/b*100).toFixed(0) + '%' : '—';
+/* taxas do funil: a primeira passagem é um CTR, que vive abaixo de 5% — arredondar
+   para inteiro transformaria 4,2% e 4,8% no mesmo "4%" */
+const pctFino = (a,b) => { if(!b) return '—'; const v = a/b*100;
+  return (v < 10 ? v.toFixed(1) : v.toFixed(0)).replace('.',',') + '%'; };
 const div = (a,b) => b ? a/b : null;
 const nOrDash = (v, fmt) => v == null ? '—' : fmt(v);
 const dataBR = iso => { if(!iso) return '—'; const p = String(iso).slice(0,10).split('-'); return p.length===3 ? p[2]+'/'+p[1] : iso; };
+/* YYYY-MM-DD no fuso local. `toISOString()` converte para UTC antes de cortar, o que
+   troca o dia em qualquer fuso a leste de Greenwich. */
+const isoLocal = d => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
 const esc = s => String(s==null?'':s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const soma = (arr, f) => arr.reduce((s,o) => s + (Number(f(o))||0), 0);
 
@@ -365,17 +419,11 @@ function agrupar(arr, fn){
 }
 
 /* ======================= CHART.JS ======================= */
-/* rampa ordinal de um tom só; no claro escurece, no escuro clareia —
-   é a mesma leitura ("mais forte = mais"), estepada pra cada superfície */
-const RAMPA_CLARA  = ['#4a3b00','#6b5500','#8c7000','#ad8a00','#d4a800'];
-const RAMPA_ESCURA = ['#fdf3d0','#f5d97a','#e8bf1f','#bf9600','#8f7000'];
+/* A rampa ordinal de um tom só vivia aqui e servia só ao funil de barras. O funil
+   virou trapézio em CSS, onde a magnitude está na largura — e uma rampa escurecendo
+   por baixo de texto escuro reprovaria no contraste. Os demais gráficos usam os dois
+   slots categóricos direto do CSS, então a rampa saiu. */
 const escuro = () => document.documentElement.classList.contains('dark');
-function rampa(n){
-  const base = escuro() ? RAMPA_ESCURA : RAMPA_CLARA;
-  if (n <= 1) return [base[escuro() ? 2 : 4]];
-  return Array.from({length:n}, (_,i) =>
-    base[Math.min(base.length-1, Math.round(i*(base.length-1)/Math.max(1,n-1)))]);
-}
 
 const graficos = {};
 function desenhar(id, cfg){
@@ -431,15 +479,30 @@ const barra = { borderRadius:4, borderSkipped:false, borderWidth:2, maxBarThickn
 let VENDAS = [], MIDIA = [], REF = null, PRINCIPAL = [];
 
 function render(){
-  const dias = ($('.seg button[aria-pressed="true"]')||{}).dataset?.range || 'all';
-  let vendas = VENDAS, midia = MIDIA, princ = PRINCIPAL;
-  if (dias !== 'all'){
-    const c = new Date(); c.setHours(0,0,0,0); c.setDate(c.getDate() - (parseInt(dias,10)-1));
-    const iso = c.toISOString().slice(0,10);
-    vendas = VENDAS.filter(v => (v.data_criacao||'') >= iso);
-    midia  = MIDIA.filter(m  => (m.dia||'')          >= iso);
-    princ  = PRINCIPAL.filter(p => (p.data_criacao||'') >= iso);
+  const seg = ($('.seg button[aria-pressed="true"]')||{}).dataset?.range || 'all';
+  $('#dtr').classList.toggle('on', seg === 'custom');
+
+  /* Os três modos viram o mesmo par [de, ate], para o filtro ser um só. */
+  let de = null, ate = null;
+  if (seg === 'custom'){
+    de = $('#dt-de').value || null;
+    ate = $('#dt-ate').value || null;
+    /* datas invertidas dariam um dashboard vazio com cara de quebrado; troco a ordem
+       e escrevo de volta nos campos, para o usuário ver o que aconteceu */
+    const invertido = de && ate && de > ate;
+    if (invertido){ [de, ate] = [ate, de]; $('#dt-de').value = de; $('#dt-ate').value = ate; }
+    $('#dt-aviso').classList.toggle('hidden', !invertido);
+  } else if (seg !== 'all'){
+    const c = new Date(); c.setHours(0,0,0,0); c.setDate(c.getDate() - (parseInt(seg,10)-1));
+    de = isoLocal(c);
   }
+
+  const dentro = d => { const s = String(d||'').slice(0,10);
+                        return (!de || s >= de) && (!ate || s <= ate); };
+  const filtrar = (arr, campo) => (de||ate) ? arr.filter(o => dentro(o[campo])) : arr;
+  const vendas = filtrar(VENDAS, 'data_criacao');
+  const midia  = filtrar(MIDIA, 'dia');
+  const princ  = filtrar(PRINCIPAL, 'data_criacao');
 
   /* ---- agregados ---- */
   /* Se um dia o link do pitch passar a carregar a utm, a mesma venda do principal cai
@@ -473,10 +536,13 @@ function render(){
   const ticket = div(fatEntrada, nCompras);
 
   /* ---- janela ---- */
+  /* mostra o intervalo com dado de verdade; se o filtro não pegou nada, mostra o que
+     foi pedido — senão o cabeçalho fica em branco e parece que o dash não carregou */
   const todasDatas = [...vendas.map(v=>v.data_criacao), ...midia.map(m=>m.dia),
                       ...princ.map(p=>p.data_criacao)].filter(Boolean).sort();
   $('#janela-txt').textContent = todasDatas.length
-    ? dataBR(todasDatas[0]) + ' → ' + dataBR(todasDatas[todasDatas.length-1]) : '';
+    ? dataBR(todasDatas[0]) + ' → ' + dataBR(todasDatas[todasDatas.length-1])
+    : (de || ate) ? `${dataBR(de)} → ${dataBR(ate)} · sem dado no período` : '';
 
   /* ---- KPIs ---- */
   /* A ação é um lançamento pago: o produto de entrada custa R$ 6,96 e nunca paga a
@@ -539,31 +605,49 @@ function render(){
   /* A última etapa é a venda do principal — é ela que fecha a conta da ação. Fica
      fora do gráfico enquanto for zero: barra zerada em escala log não desenha e ainda
      encolhe as outras. Ela entra sozinha no primeiro pitch que vender. */
+  /* Cada etapa carrega o próprio custo — é o que o funil do Mundial Cromo faz e o que
+     torna a leitura acionável: dá para ver em que degrau o dinheiro está caro, sem ir
+     conferir na régua de KPIs acima. */
+  /* sem investimento na janela não existe custo por etapa: `div` devolveria 0, que se
+     lê como "saiu de graça" em vez de "não dá para saber" */
+  const custoPor = q => inv > 0 ? div(inv, q) : null;
   const etapas = [
-    ['Impressões', imps], ['Cliques', cliques], ['Visitas à página', lpv],
-    ['Checkout iniciado', checkouts], ['Compra paga', nCompras],
-    ...(principalPagas ? [['Escola do Ouvido', principalPagas]] : []),
+    ['Impressões',        imps,      inv > 0 ? div(inv*1000, imps) : null, 'CPM (por 1.000)'],
+    ['Cliques',           cliques,   custoPor(cliques),   'CPC'],
+    ['Visitas à página',  lpv,       custoPor(lpv),       'Custo por LPV'],
+    ['Checkout iniciado', checkouts, custoPor(checkouts), 'Custo por checkout'],
+    ['Compra paga',       nCompras,  custoPor(nCompras),  'CPA'],
+    /* a etapa do principal só existe depois do primeiro pitch que vender */
+    ...(principalPagas
+        ? [['Escola do Ouvido', principalPagas, custoPor(principalPagas), 'Custo por venda']]
+        : []),
   ].filter(e => e[1] != null);
-  desenhar('c-funil', {
-    type:'bar',
-    data:{ labels:etapas.map(e=>e[0]), datasets:[{ data:etapas.map(e=>e[1]),
-      backgroundColor:rampa(etapas.length), borderColor:css('--surface'), ...barra }]},
-    /* escala log porque 6.843 impressões e 9 compras não cabem no mesmo eixo linear —
-       e o eixo fica escondido: em log o comprimento da barra não é comparável, então
-       quem carrega o número é o rótulo direto, não a régua. */
-    options:{ ...BASE, indexAxis:'y',
-      /* `grace` não vale em escala log — sem um max explícito a maior barra encosta
-         na borda e engole o próprio rótulo. */
-      scales:{ x:{ type:'logarithmic', display:false,
-                   max: Math.max(...etapas.map(e => e[1] || 0)) * 2.2 },
-               y:eixos({horiz:true}).y },
-      plugins:{ legend:{display:false},
-      tooltip: tooltip(c => {
-        const i = c.dataIndex, ant = i ? etapas[i-1][1] : null;
-        return c.parsed.x.toLocaleString('pt-BR') + (ant ? `  ·  ${pct(etapas[i][1], ant)} da etapa anterior` : '');
-      }),
-      rotulos:{ fmt: v => v.toLocaleString('pt-BR') } } },
-  });
+
+  /* larguras de 100% a 28%, como no Mundial: a estreitada é o que desenha o funil.
+     A magnitude fica na largura e no número, nunca na cor — todas as faixas usam o
+     mesmo amarelo, para o texto escuro em cima ter sempre o mesmo contraste. */
+  const larg = i => etapas.length < 2 ? 100 : 100 - 72 * (i / (etapas.length - 1));
+  $('#funil-box').innerHTML = '<div class="funil">' + etapas.map((e, i) => {
+    const [nome, val, custo, rotCusto] = e;
+    const ant = i ? etapas[i-1][1] : null;
+    /* sem base na etapa anterior a taxa não existe — fica só a linha ligando, sem a
+       pílula com um "—" que não informa nada */
+    const elo = !i ? '' : `<div class="fc"><div class="fc-line"></div>${ant > 0
+      ? `<div class="fc-tag">${esc(pctFino(val, ant))} da etapa anterior</div>` : ''
+      }<div class="fc-line"></div></div>`;
+    const ultima = i === etapas.length - 1;
+    return `${elo}
+    <div class="ftrap${ultima ? ' fim' : ''}" style="width:${larg(i).toFixed(1)}%">
+      <div class="ft-left">
+        <div class="ft-name">${esc(nome)}</div>
+        <div class="ft-val">${val.toLocaleString('pt-BR')}</div>
+      </div>
+      <div class="ft-right">
+        <div class="ft-cost">${esc(nOrDash(custo, brl))}</div>
+        <div class="ft-cost-lbl">${esc(rotCusto)}</div>
+      </div>
+    </div>`;
+  }).join('') + '</div>';
 
   /* ---- entrada → principal ---- */
   /* A conversão é de gente, não de item: quem entrou pela campanha (compra da entrada)
@@ -761,6 +845,21 @@ function banners(vendas, midia, roas, cpa, ticket, pitchAberto){
     + new Date().toLocaleString('pt-BR');
 }
 
+/* ======================= FILTRO DE PERÍODO ======================= */
+/* Ancora os dois campos no que existe de dado: o `min`/`max` impede escolher um dia
+   fora da ação, e o valor inicial deixa o "Período" abrir já mostrando tudo em vez de
+   um dashboard vazio esperando duas datas. Só preenche o valor uma vez — reboot pelo
+   botão Atualizar não pode apagar o recorte que o usuário escolheu. */
+function limitesDeData(){
+  const datas = [...VENDAS.map(v=>v.data_criacao), ...MIDIA.map(m=>m.dia),
+                 ...PRINCIPAL.map(p=>p.data_criacao)].filter(Boolean).map(d=>String(d).slice(0,10)).sort();
+  if (!datas.length) return;
+  const [ini, fim] = [datas[0], datas[datas.length-1]];
+  ['#dt-de','#dt-ate'].forEach(s => { const el = $(s); el.min = ini; el.max = fim; });
+  if (!$('#dt-de').value)  $('#dt-de').value  = ini;
+  if (!$('#dt-ate').value) $('#dt-ate').value = fim;
+}
+
 /* ======================= BOOT ======================= */
 async function boot(){
   $('#loading').classList.remove('hidden');
@@ -775,6 +874,7 @@ async function boot(){
       sb(V_PRINC,  'select=*&order=data_criacao.asc&limit=5000').catch(() => []),
     ]);
     VENDAS = v; MIDIA = m; REF = (r && r[0]) || null; PRINCIPAL = p || [];
+    limitesDeData();
     $('#loading').classList.add('hidden');
     $('#app').classList.remove('hidden');
     render();
@@ -790,6 +890,12 @@ $$('.seg button').forEach(b => b.addEventListener('click', () => {
   $$('.seg button').forEach(x => x.setAttribute('aria-pressed','false'));
   b.setAttribute('aria-pressed','true'); render();
 }));
+['#dt-de','#dt-ate'].forEach(s => $(s).addEventListener('change', render));
+/* "Máximo" volta ao intervalo inteiro sem sair do modo Período — quem está comparando
+   recortes quer voltar ao todo e continuar mexendo nas datas, não cair no "Tudo". */
+$('#dt-tudo').addEventListener('click', () => {
+  $('#dt-de').value = $('#dt-de').min; $('#dt-ate').value = $('#dt-ate').max; render();
+});
 $('#btn-tema').addEventListener('click', () => {
   document.documentElement.classList.toggle('dark');
   try { localStorage.setItem('b16-tema', escuro() ? 'dark' : 'light'); } catch(e){}
